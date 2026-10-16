@@ -1,0 +1,1 @@
+"""Stateless expense-splitting calculations for SplitPay MCP."""

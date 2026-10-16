@@ -55,11 +55,14 @@ to `http://127.0.0.1:8000/mcp` to exercise breakpoints in tool functions.
 | `splitpay_current_shares` | `last_shares`, `new_shares`: name-to-amount objects | TSV: `user`, `share` |
 | `splitpay_total_paid` | `last_paid`, `new_paid`: name-to-amount objects | TSV: `user`, `paid` |
 | `splitpay_show_balances` | `shares`, `paid`: cumulative name-to-amount objects | TOON: `summary` and `users` |
-| `splitpay_record_expenses_csv` | `expenses`: list of `date`, `purpose`, `amount`, `paid_by`; optional `session_id` | TSV: `session_id`, `file`, `rows_added` |
+| `splitpay_record_expenses_csv` | `expenses`: list of `date`, `purpose`, `amount`, `paid_by`, `shared_with` (comma-separated names); optional `session_id` | TSV: `session_id`, `file`, `rows_added` |
 
 `splitpay_record_expenses_csv` is the one stateful tool. Without `session_id` it
 generates one and creates `<session_id>_expenses.csv` with the columns
-`Date of expense`, `Purpose`, `Amount`, `Paid by`; pass the returned id to append
+`Date of expense`, `Purpose`, `Amount`, `Paid by`, then one column per user
+(payers and `shared_with` names) holding `YES` if the expense is shared with that user
+and `NO` otherwise. Users first seen in a later call get a new column, with `NO` for
+earlier rows. Pass the returned id to append
 more expenses. Dates are `YYYY-MM-DD`, amounts are positive with at most two
 decimals, and a batch is rejected entirely if any expense is invalid. Files are
 written to `./data` or the directory in the `SPLITPAY_DATA_DIR` environment variable
@@ -186,4 +189,4 @@ Tests cover cent conservation, multiple payers, cumulative totals, invalid input
 TSV parsing, TOON round trips, MCP discovery, a two-expense workflow, CLI transport
 selection, and a real MCP stdio subprocess. No external API credentials are needed.
 The subprocess test captures stderr in a temporary file for compatibility with
-Windows terminal handles and closes the child process when finished.
+Windows terminal handles and closes the child process when finished.

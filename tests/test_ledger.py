@@ -7,7 +7,7 @@ from pathlib import Path
 from splitpay.ledger import record_expenses
 
 
-EXPENSE = {"date": "2026-01-31", "purpose": "Dinner", "amount": "90.00", "paid_by": "Alice"}
+EXPENSE = {"date": "2026-01-31", "purpose": "Dinner", "amount": "90.00", "paid_by": "Alice", "shared_with": "Alice,Bob"}
 
 
 class LedgerTests(unittest.TestCase):
@@ -27,10 +27,18 @@ class LedgerTests(unittest.TestCase):
         second = record_expenses([{**EXPENSE, "purpose": "Taxi", "amount": 12.5, "paid_by": "Bob"}], first["session_id"])
         self.assertEqual(second["session_id"], first["session_id"])
         self.assertEqual(self.rows(first), [
-            ["Date of expense", "Purpose", "Amount", "Paid by"],
-            ["2026-01-31", "Dinner", "90.00", "Alice"],
-            ["2026-01-31", "Taxi", "12.50", "Bob"],
+            ["Date of expense", "Purpose", "Amount", "Paid by", "Alice", "Bob"],
+            ["2026-01-31", "Dinner", "90.00", "Alice", "YES", "YES"],
+            ["2026-01-31", "Taxi", "12.50", "Bob", "YES", "YES"],
         ])
+
+    def test_new_user_added_as_column(self):
+        first = record_expenses([EXPENSE])
+        record_expenses([{**EXPENSE, "shared_with": "Carol"}], first["session_id"])
+        rows = self.rows(first)
+        self.assertEqual(rows[0][4:], ["Alice", "Bob", "Carol"])
+        self.assertEqual(rows[1][4:], ["YES", "YES", "NO"])
+        self.assertEqual(rows[2][4:], ["NO", "NO", "YES"])
 
     def test_invalid_batch_writes_nothing(self):
         with self.assertRaises(ValueError):
@@ -38,7 +46,7 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
 
     def test_rejects_bad_input(self):
-        for expense in ({**EXPENSE, "amount": "0"}, {**EXPENSE, "purpose": " "}, {**EXPENSE, "paid_by": "A,B"}, {"date": "2026-01-31"}):
+        for expense in ({**EXPENSE, "amount": "0"}, {**EXPENSE, "purpose": " "}, {**EXPENSE, "paid_by": "A,B"}, {"date": "2026-01-31"}, {**EXPENSE, "shared_with": "A,A"}):
             with self.assertRaises(ValueError):
                 record_expenses([expense])
 

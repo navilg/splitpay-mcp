@@ -62,12 +62,15 @@ def record_expenses_csv(expenses: list[dict[str, StrictStr | StrictInt | StrictF
 
     Omit session_id on the first call: a unique session id is generated and
     <session_id>_expenses.csv is created with columns Date of expense, Purpose,
-    Amount, Paid by. Pass the returned session_id on later calls to append.
+    Amount, Paid by, plus one column per user holding YES if the expense is shared
+    with that user, else NO. Users first seen later get a new column (NO for earlier
+    rows). Pass the returned session_id on later calls to append.
     This only records a ledger; it does not update cumulative totals.
 
     Args:
         expenses: Expenses to add, each {"date": "2026-01-31", "purpose": "Dinner",
-            "amount": "90.00", "paid_by": "Alice"}. Date is YYYY-MM-DD; amount is
+            "amount": "90.00", "paid_by": "Alice",
+            "shared_with": "Alice,Bob"}. Date is YYYY-MM-DD; amount is
             positive with at most two decimal places. All are rejected if any is invalid.
         session_id: Session id returned by the first call; omit to start a new session.
     """
@@ -87,4 +90,4 @@ def show_balances(shares: UserAmounts, paid: UserAmounts) -> ToolResult:
         shares: Cumulative amounts owed per user, from current_shares.
         paid: Cumulative amounts paid per user, from total_paid.
     """
-    return ToolResult(content=encode(balance_report(shares, paid)))
+    return ToolResult(content=encode(balance_report(shares, paid)))

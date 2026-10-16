@@ -39,7 +39,7 @@ Do not expose it to untrusted networks without an authenticated gateway and TLS.
 ### VS Code
 
 The included `.vscode/mcp.json` launches stdio using this project's Windows
-virtual environment. Open it and select **Start**, then use the four SplitPay
+virtual environment. Open it and select **Start**, then use the six SplitPay
 tools in an MCP-enabled chat. On Linux/macOS, change its command to
 `${workspaceFolder}/.venv/bin/python`.
 
@@ -56,6 +56,7 @@ to `http://127.0.0.1:8000/mcp` to exercise breakpoints in tool functions.
 | `splitpay_total_paid` | `last_paid`, `new_paid`: name-to-amount objects | TSV: `user`, `paid` |
 | `splitpay_show_balances` | `shares`, `paid`: cumulative name-to-amount objects | TOON: `summary` and `users` |
 | `splitpay_record_expenses_csv` | `expenses`: list of `date`, `purpose`, `amount`, `paid_by`, `shared_with` (comma-separated names); optional `session_id` | TSV: `session_id`, `file`, `rows_added` |
+| `splitpay_read_expenses_csv` | `session_id`: id returned when recording expenses | TSV: all stored expense columns and rows, including user YES/NO columns |
 
 `splitpay_record_expenses_csv` is the one stateful tool. Without `session_id` it
 generates one and creates `<session_id>_expenses.csv` with the columns
@@ -69,7 +70,13 @@ written to `./data` or the directory in the `SPLITPAY_DATA_DIR` environment vari
 (mount a volume there when using Docker). It records a ledger only; it does not
 update totals.
 
-The other tools are **stateless calculators**, not a database-backed Splitwise service.
+Call `splitpay_read_expenses_csv` with `{"session_id": "<returned session id>"}`
+to read the saved ledger without modifying it. The result includes the header and
+all rows, in stored order, converted from CSV to TSV. Amount strings and user
+YES/NO values are preserved. Unknown session IDs or invalid CSV files return tool
+errors; callers cannot supply arbitrary file paths.
+
+The four calculation tools are **stateless calculators**, not a database-backed Splitwise service.
 There are no accounts, stored groups, or repayment tracking.
 The client retains totals separately for each group and supplies them on each call.
 Repeating a call with identical inputs produces the same result; adding an expense

@@ -21,7 +21,24 @@ def data_dir() -> Path:
 
 
 def _session_path(session_id: str) -> Path:
+    if not SESSION_ID.fullmatch(session_id):
+        raise ValueError("session_id must be a value returned by a previous call.")
     return data_dir() / f"{session_id}_expenses.csv"
+
+
+def read_expenses(session_id: str) -> list[list[str]]:
+    """Read a session ledger, preserving column order and all stored values."""
+    path = _session_path(session_id.strip().lower())
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.reader(handle, strict=True))
+    except FileNotFoundError as error:
+        raise ValueError("Unknown session_id; no expense CSV exists for this session.") from error
+    if not rows or rows[0][:len(COLUMNS)] != list(COLUMNS):
+        raise ValueError("Invalid expense CSV header.")
+    if any(len(row) != len(rows[0]) for row in rows[1:]):
+        raise ValueError("Invalid expense CSV: rows must match the header width.")
+    return rows
 
 
 def _users(value: object) -> list[str]:
@@ -72,8 +89,6 @@ def record_expenses(expenses: Sequence[Mapping[str, object]], session_id: str | 
         old_rows: list[list[str]] = []
     else:
         session_id = session_id.strip().lower()
-        if not SESSION_ID.fullmatch(session_id):
-            raise ValueError("session_id must be a value returned by a previous call.")
         path = _session_path(session_id)
         if not path.is_file():
             raise ValueError("Unknown session_id; omit it to start a new session.")

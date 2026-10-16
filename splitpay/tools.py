@@ -1,5 +1,7 @@
-"""MCP-facing tools; all state is explicitly supplied by the caller."""
+"""MCP-facing calculators and session CSV ledger tools."""
 
+import csv
+from io import StringIO
 from typing import TypeAlias
 
 from fastmcp.tools import ToolResult
@@ -8,7 +10,7 @@ from toon_format import encode
 
 from splitpay.expenses import accumulate, balance_report, split_expense
 from splitpay.formatting import to_tsv
-from splitpay.ledger import record_expenses
+from splitpay.ledger import read_expenses, record_expenses
 
 
 UserAmounts: TypeAlias = dict[str, StrictStr | StrictInt | StrictFloat]
@@ -76,6 +78,22 @@ def record_expenses_csv(expenses: list[dict[str, StrictStr | StrictInt | StrictF
     """
     result = record_expenses(expenses, session_id)
     return ToolResult(content=to_tsv([result], ("session_id", "file", "rows_added")))
+
+
+def read_expenses_csv(session_id: str) -> ToolResult:
+    """Read a session's expense CSV and return all columns and rows as TSV.
+
+    Includes Date of expense, Purpose, Amount, Paid by and each user's YES/NO
+    column, in stored order. Does not modify the file or calculate totals.
+    Unknown session IDs and invalid CSV files return tool errors.
+
+    Args:
+        session_id: Session id returned by splitpay_record_expenses_csv.
+    """
+    rows = read_expenses(session_id)
+    output = StringIO(newline="")
+    csv.writer(output, delimiter="\t", lineterminator="\n").writerows(rows)
+    return ToolResult(content=output.getvalue().rstrip("\n"))
 
 
 def show_balances(shares: UserAmounts, paid: UserAmounts) -> ToolResult:

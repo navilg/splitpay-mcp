@@ -1,4 +1,5 @@
 import csv
+import os
 from io import StringIO
 from pathlib import Path
 import sys
@@ -34,10 +35,28 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_tool_discovery(self):
         tools = await self.client.list_tools()
-        self.assertEqual({tool.name for tool in tools}, {"splitpay_add_expense", "splitpay_current_shares", "splitpay_total_paid", "splitpay_show_balances", "splitpay_record_expenses_csv"})
+        self.assertEqual({tool.name for tool in tools}, {"splitpay_add_expense", "splitpay_current_shares", "splitpay_total_paid", "splitpay_show_balances", "splitpay_record_expenses_csv", "splitpay_read_expenses_csv"})
         for tool in tools:
             self.assertIsNone(tool.outputSchema)
-            self.assertTrue(tool.annotations.readOnlyHint)
+            self.assertEqual(tool.annotations.readOnlyHint, tool.name != "splitpay_record_expenses_csv")
+
+    async def test_csv_record_and_read(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {"SPLITPAY_DATA_DIR": directory}):
+            saved = await self.call_text("splitpay_record_expenses_csv", {"expenses": [{
+                "date": "2026-01-31", "purpose": 'Dinner, "friends"', "amount": "90.00",
+                "paid_by": "Alice", "shared_with": "Alice,Bob",
+            }]})
+            session_id = next(csv.DictReader(StringIO(saved), delimiter="\t"))["session_id"]
+            text = await self.call_text("splitpay_read_expenses_csv", {"session_id": session_id})
+            self.assertEqual(list(csv.reader(StringIO(text), delimiter="\t")), [
+                ["Date of expense", "Purpose", "Amount", "Paid by", "Alice", "Bob"],
+                ["2026-01-31", 'Dinner, "friends"', "90.00", "Alice", "YES", "YES"],
+            ])
+            for invalid in ("../x", "0" * 32):
+                result = await self.client.call_tool(
+                    "splitpay_read_expenses_csv", {"session_id": invalid}, raise_on_error=False,
+                )
+                self.assertTrue(result.is_error)
 
     async def test_two_expense_workflow(self):
         shares = {}
@@ -87,7 +106,7 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
                 log_file=log,
             )
             async with Client(transport) as client:
-                self.assertEqual(len(await client.list_tools()), 4)
+                self.assertEqual(len(await client.list_tools()), 6)
                 result = await client.call_tool("splitpay_add_expense", {"participants": "Alice,Bob", "paid": {"Alice": "10.00"}})
                 self.assertIn("Bob\t0.00\t5.00\t-5.00", result.content[0].text)
                 self.assertIsNone(result.structured_content)

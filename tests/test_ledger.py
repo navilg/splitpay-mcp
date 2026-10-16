@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from splitpay.ledger import record_expenses
+from splitpay.ledger import COLUMNS, read_expenses, record_expenses
 
 
 EXPENSE = {"date": "2026-01-31", "purpose": "Dinner", "amount": "90.00", "paid_by": "Alice", "shared_with": "Alice,Bob"}
@@ -58,6 +58,30 @@ class LedgerTests(unittest.TestCase):
     def test_formula_purpose_is_neutralized(self):
         result = record_expenses([{**EXPENSE, "purpose": "=SUM(A1)"}])
         self.assertEqual(self.rows(result)[1][1], "'=SUM(A1)")
+
+    def test_reads_all_rows_without_modifying_file(self):
+        result = record_expenses([{**EXPENSE, "purpose": 'Dinner, "friends"'}])
+        record_expenses([{**EXPENSE, "shared_with": "Carol"}], result["session_id"])
+        path = Path(self.tmp.name) / result["file"]
+        before = path.read_bytes()
+        self.assertEqual(read_expenses(result["session_id"]), self.rows(result))
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_read_rejects_unknown_or_unsafe_session(self):
+        for session_id in ("../x", "/etc/passwd", "", "0" * 32):
+            with self.subTest(session_id=session_id), self.assertRaises(ValueError):
+                read_expenses(session_id)
+        self.assertEqual(list(Path(self.tmp.name).iterdir()), [])
+
+    def test_read_header_only_and_invalid_csv(self):
+        path = Path(self.tmp.name) / f"{'0' * 32}_expenses.csv"
+        with path.open("w", newline="", encoding="utf-8") as handle:
+            csv.writer(handle).writerow(COLUMNS)
+        self.assertEqual(read_expenses("0" * 32), [list(COLUMNS)])
+        for content in ("", "wrong,header\n", ",".join(COLUMNS) + "\nshort,row\n"):
+            path.write_text(content, encoding="utf-8")
+            with self.subTest(content=content), self.assertRaises(ValueError):
+                read_expenses("0" * 32)
 
 
 if __name__ == "__main__":

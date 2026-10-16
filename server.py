@@ -20,7 +20,7 @@ mcp = FastMCP(
 )
 
 for tool in (add_expense, current_shares, total_paid, show_balances):
-    mcp.tool(annotations={
+    mcp.tool(name=f"splitpay_{tool.__name__}", annotations={
         "readOnlyHint": True,
         "destructiveHint": False,
         "idempotentHint": True,

@@ -51,10 +51,10 @@ to `http://127.0.0.1:8000/mcp` to exercise breakpoints in tool functions.
 
 | Tool | Inputs | Output |
 | --- | --- | --- |
-| `add_expense` | `participants`: comma-separated names; `paid`: name-to-amount object | TSV: `user`, `paid`, `share`, `balance` |
-| `current_shares` | `last_shares`, `new_shares`: name-to-amount objects | TSV: `user`, `share` |
-| `total_paid` | `last_paid`, `new_paid`: name-to-amount objects | TSV: `user`, `paid` |
-| `show_balances` | `shares`, `paid`: cumulative name-to-amount objects | TOON: `summary` and `users` |
+| `splitpay_add_expense` | `participants`: comma-separated names; `paid`: name-to-amount object | TSV: `user`, `paid`, `share`, `balance` |
+| `splitpay_current_shares` | `last_shares`, `new_shares`: name-to-amount objects | TSV: `user`, `share` |
+| `splitpay_total_paid` | `last_paid`, `new_paid`: name-to-amount objects | TSV: `user`, `paid` |
+| `splitpay_show_balances` | `shares`, `paid`: cumulative name-to-amount objects | TOON: `summary` and `users` |
 
 These are **stateless calculators**, not a database-backed Splitwise service.
 There are no accounts, stored groups, saved expenses, or repayment tracking.
@@ -80,7 +80,7 @@ to previously updated totals a second time double-counts it.
   means deficiency (owes money), and zero means settled.
 - Accumulation includes the union of users, with missing amounts treated as zero.
   Empty accumulation results still include a TSV header.
-- `show_balances` reports mismatched paid/share totals with `totals_match: false`
+- `splitpay_show_balances` reports mismatched paid/share totals with `totals_match: false`
   and their signed `difference`; it does not silently rebalance inconsistent inputs.
 
 ## Example Workflow
@@ -92,7 +92,7 @@ arguments return standard MCP tool errors.
 
 ### 1. Add an expense
 
-Call `add_expense`:
+Call `splitpay_add_expense`:
 
 ```json
 {"participants": "Alice,Bob,Carol", "paid": {"Alice": "60.00", "Bob": "30.00"}}
@@ -109,7 +109,7 @@ Carol	0.00	30.00	-30.00
 
 ### 2. Accumulate shares
 
-Call `current_shares`, passing the expense's `share` column as `new_shares`:
+Call `splitpay_current_shares`, passing the expense's `share` column as `new_shares`:
 
 ```json
 {"last_shares": {}, "new_shares": {"Alice": "30.00", "Bob": "30.00", "Carol": "30.00"}}
@@ -127,7 +127,7 @@ additional expense liabilities as `new_shares`, not net balances.
 
 ### 3. Accumulate payments
 
-Call `total_paid`, passing the expense's `paid` column as `new_paid`:
+Call `splitpay_total_paid`, passing the expense's `paid` column as `new_paid`:
 
 ```json
 {"last_paid": {}, "new_paid": {"Alice": "60.00", "Bob": "30.00", "Carol": "0.00"}}
@@ -145,7 +145,7 @@ payments as `new_paid`. Do not count reimbursements as new expense payments.
 
 ### 4. Show deficiency or surplus
 
-Call `show_balances`:
+Call `splitpay_show_balances`:
 
 ```json
 {"shares": {"Alice": "30.00", "Bob": "30.00", "Carol": "30.00"}, "paid": {"Alice": "60.00", "Bob": "30.00", "Carol": "0.00"}}

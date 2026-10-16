@@ -34,7 +34,7 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_tool_discovery(self):
         tools = await self.client.list_tools()
-        self.assertEqual({tool.name for tool in tools}, {"add_expense", "current_shares", "total_paid", "show_balances"})
+        self.assertEqual({tool.name for tool in tools}, {"splitpay_add_expense", "splitpay_current_shares", "splitpay_total_paid", "splitpay_show_balances"})
         for tool in tools:
             self.assertIsNone(tool.outputSchema)
             self.assertTrue(tool.annotations.readOnlyHint)
@@ -43,18 +43,18 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
         shares = {}
         paid = {}
         for payments in ({"Alice": "60.00", "Bob": "30.00"}, {"Carol": "30.00"}):
-            expense = await self.call_text("add_expense", {"participants": "Alice,Bob,Carol", "paid": payments})
+            expense = await self.call_text("splitpay_add_expense", {"participants": "Alice,Bob,Carol", "paid": payments})
             rows = list(csv.DictReader(StringIO(expense), delimiter="\t"))
-            share_text = await self.call_text("current_shares", {
+            share_text = await self.call_text("splitpay_current_shares", {
                 "last_shares": shares, "new_shares": {row["user"]: row["share"] for row in rows},
             })
-            paid_text = await self.call_text("total_paid", {
+            paid_text = await self.call_text("splitpay_total_paid", {
                 "last_paid": paid, "new_paid": {row["user"]: row["paid"] for row in rows},
             })
             shares = {row["user"]: row["share"] for row in csv.DictReader(StringIO(share_text), delimiter="\t")}
             paid = {row["user"]: row["paid"] for row in csv.DictReader(StringIO(paid_text), delimiter="\t")}
         self.assertEqual(shares, {"Alice": "40.00", "Bob": "40.00", "Carol": "40.00"})
-        report = decode(await self.call_text("show_balances", {"shares": shares, "paid": paid}))
+        report = decode(await self.call_text("splitpay_show_balances", {"shares": shares, "paid": paid}))
         self.assertEqual(report["summary"], {
             "total_shares": "120.00", "total_paid": "120.00", "difference": "0.00", "totals_match": True,
         })
@@ -62,11 +62,11 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_validation_errors_are_mcp_errors(self):
         cases = [
-            ("add_expense", {"participants": "Alice", "paid": {"Alice": -1}}),
-            ("add_expense", {"participants": "Alice", "paid": {"Alice": True}}),
-            ("add_expense", {"participants": "Alice,Alice", "paid": {"Alice": 1}}),
-            ("current_shares", {"last_shares": {}, "new_shares": {"Alice": "0.001"}}),
-            ("total_paid", {"last_paid": {"Alice": "NaN"}, "new_paid": {}}),
+            ("splitpay_add_expense", {"participants": "Alice", "paid": {"Alice": -1}}),
+            ("splitpay_add_expense", {"participants": "Alice", "paid": {"Alice": True}}),
+            ("splitpay_add_expense", {"participants": "Alice,Alice", "paid": {"Alice": 1}}),
+            ("splitpay_current_shares", {"last_shares": {}, "new_shares": {"Alice": "0.001"}}),
+            ("splitpay_total_paid", {"last_paid": {"Alice": "NaN"}, "new_paid": {}}),
         ]
         for name, arguments in cases:
             with self.subTest(tool=name, arguments=arguments):
@@ -74,7 +74,7 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(result.is_error)
 
     async def test_empty_tsv_keeps_header(self):
-        self.assertEqual(await self.call_text("current_shares", {"last_shares": {}, "new_shares": {}}), "user\tshare")
+        self.assertEqual(await self.call_text("splitpay_current_shares", {"last_shares": {}, "new_shares": {}}), "user\tshare")
 
     async def test_stdio_round_trip(self):
         with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as log:
@@ -88,7 +88,7 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
             )
             async with Client(transport) as client:
                 self.assertEqual(len(await client.list_tools()), 4)
-                result = await client.call_tool("add_expense", {"participants": "Alice,Bob", "paid": {"Alice": "10.00"}})
+                result = await client.call_tool("splitpay_add_expense", {"participants": "Alice,Bob", "paid": {"Alice": "10.00"}})
                 self.assertIn("Bob\t0.00\t5.00\t-5.00", result.content[0].text)
                 self.assertIsNone(result.structured_content)
 

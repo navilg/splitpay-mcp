@@ -34,7 +34,7 @@ class MCPTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_tool_discovery(self):
         tools = await self.client.list_tools()
-        self.assertEqual({tool.name for tool in tools}, {"splitpay_add_expense", "splitpay_current_shares", "splitpay_total_paid", "splitpay_show_balances"})
+        self.assertEqual({tool.name for tool in tools}, {"splitpay_add_expense", "splitpay_current_shares", "splitpay_total_paid", "splitpay_show_balances", "splitpay_record_expenses_csv"})
         for tool in tools:
             self.assertIsNone(tool.outputSchema)
             self.assertTrue(tool.annotations.readOnlyHint)

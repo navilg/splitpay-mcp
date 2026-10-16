@@ -8,6 +8,7 @@ from toon_format import encode
 
 from splitpay.expenses import accumulate, balance_report, split_expense
 from splitpay.formatting import to_tsv
+from splitpay.ledger import record_expenses
 
 
 UserAmounts: TypeAlias = dict[str, StrictStr | StrictInt | StrictFloat]
@@ -54,6 +55,24 @@ def total_paid(last_paid: UserAmounts, new_paid: UserAmounts) -> ToolResult:
         new_paid: Additional expense payments per user, not cumulative totals.
     """
     return ToolResult(content=to_tsv(accumulate(last_paid, new_paid, "paid"), ("user", "paid")))
+
+
+def record_expenses_csv(expenses: list[dict[str, StrictStr | StrictInt | StrictFloat]], session_id: str | None = None) -> ToolResult:
+    """Append expenses to a session CSV file; return TSV: session_id, file, rows_added.
+
+    Omit session_id on the first call: a unique session id is generated and
+    <session_id>_expenses.csv is created with columns Date of expense, Purpose,
+    Amount, Paid by. Pass the returned session_id on later calls to append.
+    This only records a ledger; it does not update cumulative totals.
+
+    Args:
+        expenses: Expenses to add, each {"date": "2026-01-31", "purpose": "Dinner",
+            "amount": "90.00", "paid_by": "Alice"}. Date is YYYY-MM-DD; amount is
+            positive with at most two decimal places. All are rejected if any is invalid.
+        session_id: Session id returned by the first call; omit to start a new session.
+    """
+    result = record_expenses(expenses, session_id)
+    return ToolResult(content=to_tsv([result], ("session_id", "file", "rows_added")))
 
 
 def show_balances(shares: UserAmounts, paid: UserAmounts) -> ToolResult:

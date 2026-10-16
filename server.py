@@ -4,7 +4,7 @@ import argparse
 
 from fastmcp import FastMCP
 
-from splitpay.tools import add_expense, current_shares, show_balances, total_paid
+from splitpay.tools import add_expense, current_shares, record_expenses_csv, show_balances, total_paid
 
 
 mcp = FastMCP(
@@ -15,7 +15,9 @@ mcp = FastMCP(
         "its paid column with total_paid, then call show_balances. "
         "Keep each group's totals separately in the caller. Flat results are TSV; "
         "nested reports are TOON. Amounts are decimal strings. "
-        "Do not add the same expense twice to accumulated totals."
+        "Do not add the same expense twice to accumulated totals. "
+        "splitpay_record_expenses_csv is the only stateful tool: it appends expenses to a "
+        "per-session CSV file; reuse the returned session_id."
     ),
 )
 
@@ -26,6 +28,13 @@ for tool in (add_expense, current_shares, total_paid, show_balances):
         "idempotentHint": True,
         "openWorldHint": False,
     })(tool)
+
+mcp.tool(name="splitpay_record_expenses_csv", annotations={
+    "readOnlyHint": False,
+    "destructiveHint": False,
+    "idempotentHint": False,
+    "openWorldHint": False,
+})(record_expenses_csv)
 
 
 def main() -> None:

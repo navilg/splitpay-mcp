@@ -55,9 +55,19 @@ to `http://127.0.0.1:8000/mcp` to exercise breakpoints in tool functions.
 | `splitpay_current_shares` | `last_shares`, `new_shares`: name-to-amount objects | TSV: `user`, `share` |
 | `splitpay_total_paid` | `last_paid`, `new_paid`: name-to-amount objects | TSV: `user`, `paid` |
 | `splitpay_show_balances` | `shares`, `paid`: cumulative name-to-amount objects | TOON: `summary` and `users` |
+| `splitpay_record_expenses_csv` | `expenses`: list of `date`, `purpose`, `amount`, `paid_by`; optional `session_id` | TSV: `session_id`, `file`, `rows_added` |
 
-These are **stateless calculators**, not a database-backed Splitwise service.
-There are no accounts, stored groups, saved expenses, or repayment tracking.
+`splitpay_record_expenses_csv` is the one stateful tool. Without `session_id` it
+generates one and creates `<session_id>_expenses.csv` with the columns
+`Date of expense`, `Purpose`, `Amount`, `Paid by`; pass the returned id to append
+more expenses. Dates are `YYYY-MM-DD`, amounts are positive with at most two
+decimals, and a batch is rejected entirely if any expense is invalid. Files are
+written to `./data` or the directory in the `SPLITPAY_DATA_DIR` environment variable
+(mount a volume there when using Docker). It records a ledger only; it does not
+update totals.
+
+The other tools are **stateless calculators**, not a database-backed Splitwise service.
+There are no accounts, stored groups, or repayment tracking.
 The client retains totals separately for each group and supplies them on each call.
 Repeating a call with identical inputs produces the same result; adding an expense
 to previously updated totals a second time double-counts it.

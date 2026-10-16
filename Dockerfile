@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
+VOLUME ["/app/data"]
 
 EXPOSE 8000
 CMD ["python", "server.py"]
